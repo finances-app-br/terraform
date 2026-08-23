@@ -1,0 +1,13 @@
+.terraform/
+# .terraform.lock.hcl is intentionally committed for reproducible provider versions.
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!*.tfvars.example
+build/
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.out

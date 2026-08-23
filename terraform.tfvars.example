@@ -1,0 +1,50 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+
+project_name = "finance-app-bff"
+aws_region   = "us-east-1"
+
+# ---- Aurora Serverless v2 (PostgreSQL) ----
+aurora_engine_version  = "16.6" # scale-to-zero needs 16.3+/15.7+/14.12+
+aurora_database_name   = "finance"
+aurora_master_username = "bff_admin"
+
+# min_capacity = 0 pauses the cluster when idle; the BFF retries the wake-up.
+aurora_min_capacity             = 0
+aurora_max_capacity             = 2
+aurora_seconds_until_auto_pause = 300
+
+aurora_backup_retention_days = 7
+aurora_deletion_protection   = false
+aurora_skip_final_snapshot   = false
+
+# Private VPC that hosts the cluster (nothing else lives in it).
+aurora_vpc_cidr     = "10.42.0.0/16"
+aurora_subnet_count = 2
+
+# ---- Lambda ----
+lambda_runtime     = "nodejs22.x" # bump to "nodejs24.x" when available in your region
+lambda_memory_size = 256
+lambda_timeout     = 15
+
+# ---- CORS (restrict in production) ----
+cors_allow_origins = ["*"]
+
+# ---- Cloudflare custom domain ----
+# Set enable_custom_domain = false to skip Cloudflare/ACM and use the raw
+# *.execute-api URL (handy for a first deploy without a domain).
+enable_custom_domain = true
+domain_name          = "api.finance.example.com"
+cloudflare_zone_id   = "your-cloudflare-zone-id"
+cloudflare_api_token = "your-cloudflare-api-token" # better: export TF_VAR_cloudflare_api_token
+cloudflare_proxied   = true
+
+# ---- Optional JWT authorizer (recommended for production) ----
+# Without this the BFF trusts the x-user-id header, which is dev-only.
+# jwt_authorizer = {
+#   issuer    = "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_xxxxxxxxx"
+#   audiences = ["your-app-client-id"]
+# }
+
+tags = {
+  Environment = "production"
+}
