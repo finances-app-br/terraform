@@ -3,6 +3,10 @@
 project_name = "finance-app-bff"
 aws_region   = "us-east-1"
 
+# Where the BFF checkout lives, relative to this module. Only the `bff` service
+# is built from it; `web` and `api` run a generated placeholder handler.
+# bff_source_dir = "../app-bff"
+
 # ---- Aurora Serverless v2 (PostgreSQL) ----
 aurora_engine_version  = "16.6" # scale-to-zero needs 16.3+/15.7+/14.12+
 aurora_database_name   = "finance"
@@ -22,23 +26,53 @@ aurora_vpc_cidr     = "10.42.0.0/16"
 aurora_subnet_count = 2
 
 # ---- Lambda ----
-lambda_runtime     = "nodejs22.x" # bump to "nodejs24.x" when available in your region
-lambda_memory_size = 256
-lambda_timeout     = 15
+lambda_runtime              = "nodejs24.x"
+lambda_memory_size          = 256
+lambda_timeout              = 15
+lambda_reserved_concurrency = -1 # set a positive cap to bound cost/blast radius
+enable_xray_tracing         = true
+log_retention_days          = 14
 
-# ---- CORS (restrict in production) ----
-cors_allow_origins = ["*"]
+# ---- CORS (leave empty to omit the CORS configuration entirely) ----
+# One list per service. Never "*": these APIs accept credential-bearing headers.
+api_cors_allow_origins = ["https://finances.app.br"]
+bff_cors_allow_origins = ["https://finances.app.br"]
+web_cors_allow_origins = []
 
-# ---- Cloudflare custom domain ----
+# ---- Rate limiting (per API Gateway stage) ----
+throttling_rate_limit  = 50
+throttling_burst_limit = 100
+
+# ---- Cloudflare custom domains ----
+# One API Gateway + Lambda per domain (see the `services` map in locals.tf).
 # Set enable_custom_domain = false to skip Cloudflare/ACM and use the raw
-# *.execute-api URL (handy for a first deploy without a domain).
+# *.execute-api URLs (handy for a first deploy without a domain). Leaving a
+# single *_domain_name empty skips just that service's custom domain.
 enable_custom_domain = true
-domain_name          = "api.finance.example.com"
+web_domain_name      = "finances.app.br"
+api_domain_name      = "api.finances.app.br"
+bff_domain_name      = "bff.finances.app.br"
 cloudflare_zone_id   = "your-cloudflare-zone-id"
-cloudflare_api_token = "your-cloudflare-api-token" # better: export TF_VAR_cloudflare_api_token
 cloudflare_proxied   = true
 
-# ---- Optional JWT authorizer (recommended for production) ----
+# Leave cloudflare_api_token unset and export CLOUDFLARE_API_TOKEN instead — the
+# provider reads it natively, so the token never has to touch a file. See
+# "Cloudflare tokens across projects" in the README.
+# cloudflare_api_token = "your-cloudflare-api-token"
+
+# ---- Domain hardening (zone-wide — see variables.tf) ----
+manage_cloudflare_zone_security = true
+cloudflare_ssl_mode             = "strict"
+hsts_max_age                    = 31536000
+hsts_preload                    = false
+enable_dnssec                   = true
+manage_caa_records              = true
+# caa_report_email              = "security@finances.app.br"
+# caa_issuers defaults to ACM + the CAs Cloudflare's Universal SSL rotates
+# between. Trim it only if you know which one issues your edge certificate.
+# caa_issuers                   = ["amazon.com", "letsencrypt.org", "pki.goog"]
+
+# ---- Optional JWT authorizer for the BFF (recommended for production) ----
 # Without this the BFF trusts the x-user-id header, which is dev-only.
 # jwt_authorizer = {
 #   issuer    = "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_xxxxxxxxx"

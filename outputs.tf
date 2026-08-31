@@ -1,16 +1,34 @@
-output "api_endpoint" {
-  description = "Default API Gateway invoke URL."
-  value       = aws_apigatewayv2_api.this.api_endpoint
+output "api_endpoints" {
+  description = "Default *.execute-api invoke URL of each service."
+  value       = { for k, a in aws_apigatewayv2_api.service : k => a.api_endpoint }
+}
+
+output "service_urls" {
+  description = "Public base URL of each service — the custom domain where one exists, the raw invoke URL otherwise."
+  value = {
+    for k, a in aws_apigatewayv2_api.service :
+    k => contains(keys(local.domain_services), k) ? "https://${local.domain_services[k].domain_name}" : a.api_endpoint
+  }
 }
 
 output "graphql_url" {
   description = "GraphQL endpoint the Flutter app should call."
-  value       = local.custom_domain_enabled == 1 ? "https://${var.domain_name}/graphql" : "${aws_apigatewayv2_api.this.api_endpoint}/graphql"
+  value       = "${contains(keys(local.domain_services), "bff") ? "https://${local.domain_services["bff"].domain_name}" : aws_apigatewayv2_api.service["bff"].api_endpoint}/graphql"
 }
 
-output "custom_domain_target" {
-  description = "API Gateway regional target the Cloudflare CNAME points at."
-  value       = one(aws_apigatewayv2_domain_name.this[*].domain_name_configuration[0].target_domain_name)
+output "custom_domain_targets" {
+  description = "API Gateway regional target each Cloudflare CNAME points at."
+  value       = { for k, d in aws_apigatewayv2_domain_name.service : k => d.domain_name_configuration[0].target_domain_name }
+}
+
+output "lambda_function_names" {
+  description = "Name of each service's Lambda function."
+  value       = { for k, f in aws_lambda_function.service : k => f.function_name }
+}
+
+output "dnssec_ds_record" {
+  description = "DS record to publish at the registrar. DNSSEC is not enforced until it is."
+  value       = one(cloudflare_zone_dnssec.this[*].ds)
 }
 
 output "aurora_cluster_arn" {
@@ -31,9 +49,4 @@ output "aurora_database_name" {
 output "aurora_cluster_endpoint" {
   description = "Writer endpoint (only reachable from inside the cluster VPC)."
   value       = aws_rds_cluster.aurora.endpoint
-}
-
-output "lambda_function_name" {
-  description = "Name of the BFF Lambda function."
-  value       = aws_lambda_function.bff.function_name
 }

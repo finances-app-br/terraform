@@ -100,16 +100,16 @@ resource "aws_rds_cluster_instance" "aurora" {
   publicly_accessible = false
 }
 
-# Applies the sync schema (see ../app/src/data/auroraSchema.ts) once the cluster
+# Applies the sync schema (see the BFF's src/data/auroraSchema.ts) once the cluster
 # can answer statements. The script is idempotent, so re-runs are harmless.
 resource "null_resource" "aurora_migrate" {
   triggers = {
     cluster = aws_rds_cluster.aurora.id
-    schema  = filesha1("${path.module}/../app/src/data/auroraSchema.ts")
+    schema  = filesha1("${local.bff_path}/src/data/auroraSchema.ts")
   }
 
   provisioner "local-exec" {
-    working_dir = "${path.module}/../app"
+    working_dir = local.bff_path
     command     = "npm run migrate"
 
     environment = {
