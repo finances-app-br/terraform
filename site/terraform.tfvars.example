@@ -1,0 +1,22 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+
+# Same zone as the platform stack (../terraform.tfvars).
+cloudflare_zone_id = "your-cloudflare-zone-id"
+
+# Defaults, shown for reference:
+# domain_name          = "finances.app.br"   # also the S3 bucket name
+# www_redirect         = true
+# github_repository    = "finances-app-br/site"
+# github_deploy_branch = "main"
+
+# An AWS account holds a single GitHub OIDC provider. Leave false where it
+# already exists (the stack looks it up); true only in an account without one.
+# create_github_oidc_provider = false
+
+# Leave cloudflare_api_token unset and export CLOUDFLARE_API_TOKEN instead —
+# ../.envrc already does, and direnv picks it up from this subdirectory too.
+# cloudflare_api_token = "your-cloudflare-api-token"
+
+tags = {
+  Environment = "production"
+}

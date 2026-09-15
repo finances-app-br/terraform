@@ -220,14 +220,9 @@ variable "enable_custom_domain" {
 }
 
 variable "web_domain_name" {
-  description = "Domain for the web surface. Empty skips the web custom domain. The apex belongs to the static site (site_domain_name), so the two must differ."
+  description = "Domain for the web surface. Empty skips the web custom domain. Not the zone apex: that record belongs to the static site stack in site/."
   type        = string
   default     = ""
-
-  validation {
-    condition     = var.web_domain_name == "" || var.web_domain_name != var.site_domain_name
-    error_message = "web_domain_name cannot equal site_domain_name: the static site already owns that hostname's DNS record."
-  }
 }
 
 variable "api_domain_name" {
@@ -240,43 +235,6 @@ variable "bff_domain_name" {
   description = "Domain for the GraphQL sync BFF, e.g. bff.finances.app.br. Empty skips the bff custom domain."
   type        = string
   default     = ""
-}
-
-# ------------------------------------------------------------ static site ---
-
-variable "site_domain_name" {
-  description = "Apex domain of the static marketing site served from S3 through Cloudflare, e.g. finances.app.br. Also the S3 bucket name. Empty skips the site."
-  type        = string
-  default     = ""
-
-  validation {
-    condition     = var.site_domain_name == "" || var.cloudflare_zone_id != ""
-    error_message = "site_domain_name needs cloudflare_zone_id: the site is only reachable through Cloudflare."
-  }
-}
-
-variable "site_www_redirect" {
-  description = "Create www.<site_domain_name> and a 301 redirect from it to the apex."
-  type        = bool
-  default     = true
-}
-
-variable "site_github_repository" {
-  description = "GitHub repository (owner/repo) whose Actions workflow deploys the site. The deploy role trusts only this repository."
-  type        = string
-  default     = "finances-app-br/site"
-}
-
-variable "site_github_deploy_branch" {
-  description = "Branch of site_github_repository allowed to deploy. The deploy role trusts only this branch."
-  type        = string
-  default     = "master"
-}
-
-variable "create_github_oidc_provider" {
-  description = "Create the GitHub Actions OIDC provider used by the site deploy role. An AWS account holds only one; leave false when it already exists and the stack looks it up instead."
-  type        = bool
-  default     = false
 }
 
 variable "cloudflare_api_token" {

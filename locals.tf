@@ -55,21 +55,6 @@ locals {
 
   jwt_enabled = var.jwt_authorizer == null ? 0 : 1
 
-  # The static site (site.tf) has no API Gateway or Lambda, so it lives outside
-  # the services map. Like the service domains, it only exists when custom
-  # domains are enabled — it is unreachable without Cloudflare in front.
-  site_enabled = var.enable_custom_domain && var.site_domain_name != ""
-
-  site_hosts = compact([
-    var.site_domain_name,
-    var.site_www_redirect ? "www.${var.site_domain_name}" : "",
-  ])
-
-  # Cloudflare rule expressions scoped to the site, so the API Gateway services
-  # in the same zone never pick up the site's cache or SSL rules.
-  site_hosts_expression = "(http.host in {${join(" ", [for host in local.site_hosts : "\"${host}\""])}})"
-  site_apex_expression  = "(http.host eq \"${var.site_domain_name}\")"
-
   # The zip each function is deployed from: a real esbuild bundle for the BFF,
   # the generated stub for everything else.
   lambda_package = merge(

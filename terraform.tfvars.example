@@ -49,23 +49,12 @@ throttling_burst_limit = 100
 # *.execute-api URLs (handy for a first deploy without a domain). Leaving a
 # single *_domain_name empty skips just that service's custom domain.
 enable_custom_domain = true
-# The apex belongs to the static site below; `web` needs a hostname of its own
-# (or none) — the two cannot share one.
+# The apex belongs to the static site stack in site/ (separate state); `web`
+# needs a hostname of its own (or none) — the two cannot share one.
 web_domain_name    = ""
 api_domain_name    = "api.finances.app.br"
 bff_domain_name    = "bff.finances.app.br"
 cloudflare_proxied = true
-
-# ---- Static site (S3 + Cloudflare, see site.tf) ----
-# The bucket takes this exact name. Content is deployed by the site repo's
-# GitHub Actions workflow, which assumes the `site_deploy_role_arn` output.
-site_domain_name          = "finances.app.br"
-site_www_redirect         = true
-site_github_repository    = "finances-app-br/site"
-site_github_deploy_branch = "master"
-# An AWS account holds a single GitHub OIDC provider. Leave false where it
-# already exists (the stack looks it up); true only in an account without one.
-create_github_oidc_provider = false
 
 # Leave cloudflare_api_token unset and export CLOUDFLARE_API_TOKEN instead — the
 # provider reads it natively, so the token never has to touch a file. See

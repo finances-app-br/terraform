@@ -50,23 +50,3 @@ output "aurora_cluster_endpoint" {
   description = "Writer endpoint (only reachable from inside the cluster VPC)."
   value       = aws_rds_cluster.aurora.endpoint
 }
-
-output "site_url" {
-  description = "Public URL of the static site, or null when the site is disabled."
-  value       = local.site_enabled ? "https://${var.site_domain_name}" : null
-}
-
-output "site_bucket_name" {
-  description = "S3 bucket the site workflow syncs into."
-  value       = one(aws_s3_bucket.site[*].id)
-}
-
-output "site_website_endpoint" {
-  description = "S3 website endpoint Cloudflare proxies the site to."
-  value       = one(aws_s3_bucket_website_configuration.site[*].website_endpoint)
-}
-
-output "site_deploy_role_arn" {
-  description = "Role the site's GitHub Actions workflow assumes. Store it as the AWS_DEPLOY_ROLE_ARN secret of site_github_repository."
-  value       = one(aws_iam_role.site_deploy[*].arn)
-}
