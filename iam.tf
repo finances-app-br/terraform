@@ -71,3 +71,85 @@ resource "aws_iam_role_policy" "lambda" {
   role   = aws_iam_role.lambda[each.key].id
   policy = data.aws_iam_policy_document.lambda[each.key].json
 }
+
+# ------------------------------------------------ static site deploy role ---
+#
+# The site repository's GitHub Actions workflow assumes this role through OIDC
+# — no long-lived keys — to sync the build into the bucket. It can touch that
+# bucket and nothing else.
+
+resource "aws_iam_openid_connect_provider" "github" {
+  count = local.site_enabled && var.create_github_oidc_provider ? 1 : 0
+
+  url            = "https://token.actions.githubusercontent.com"
+  client_id_list = ["sts.amazonaws.com"]
+}
+
+# An account holds a single GitHub OIDC provider; reuse the existing one.
+data "aws_iam_openid_connect_provider" "github" {
+  count = local.site_enabled && !var.create_github_oidc_provider ? 1 : 0
+
+  url = "https://token.actions.githubusercontent.com"
+}
+
+data "aws_iam_policy_document" "site_deploy_assume" {
+  count = local.site_enabled ? 1 : 0
+
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type = "Federated"
+      identifiers = concat(
+        aws_iam_openid_connect_provider.github[*].arn,
+        data.aws_iam_openid_connect_provider.github[*].arn,
+      )
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    # Pinned to one repository and branch. Without it any GitHub workflow could
+    # assume the role; with a stale value the real one fails with AccessDenied.
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:${var.site_github_repository}:ref:refs/heads/${var.site_github_deploy_branch}"]
+    }
+  }
+}
+
+resource "aws_iam_role" "site_deploy" {
+  count = local.site_enabled ? 1 : 0
+
+  name               = "${var.project_name}-site-deploy"
+  description        = "Assumed by GitHub Actions (${var.site_github_repository}@${var.site_github_deploy_branch}) to deploy the static site."
+  assume_role_policy = data.aws_iam_policy_document.site_deploy_assume[0].json
+}
+
+data "aws_iam_policy_document" "site_deploy" {
+  count = local.site_enabled ? 1 : 0
+
+  statement {
+    sid       = "ListBucket"
+    actions   = ["s3:ListBucket", "s3:GetBucketLocation"]
+    resources = [aws_s3_bucket.site[0].arn]
+  }
+
+  statement {
+    sid       = "SyncObjects"
+    actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+    resources = ["${aws_s3_bucket.site[0].arn}/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "site_deploy" {
+  count = local.site_enabled ? 1 : 0
+
+  name   = "${var.project_name}-site-deploy-policy"
+  role   = aws_iam_role.site_deploy[0].id
+  policy = data.aws_iam_policy_document.site_deploy[0].json
+}
