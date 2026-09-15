@@ -36,10 +36,22 @@ data "aws_iam_policy_document" "deploy_assume" {
 
     # Pinned to one repository and branch. Without it any GitHub workflow could
     # assume the role; with a stale value the real one fails with AccessDenied.
+    #
+    # AWS requires this to be scoped via `sub` or `job_workflow_ref` — a trust
+    # policy conditioned only on `repository`/`ref` is rejected outright
+    # (MalformedPolicyDocument). But GitHub embeds immutable org/repo IDs into
+    # `sub` (repo:org@id/name@id:ref:...) once a repository or its org has been
+    # renamed or transferred, so a plain `repo:${var.github_repository}:ref:...`
+    # StringEquals silently stops matching after that happens — hence
+    # StringLike with a wildcard for the optional `@<id>` suffix, covering both
+    # forms.
     condition {
-      test     = "StringEquals"
+      test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repository}:ref:refs/heads/${var.github_deploy_branch}"]
+      values = [
+        "repo:${var.github_repository}:ref:refs/heads/${var.github_deploy_branch}",
+        "repo:${split("/", var.github_repository)[0]}@*/${split("/", var.github_repository)[1]}@*:ref:refs/heads/${var.github_deploy_branch}",
+      ]
     }
   }
 }
