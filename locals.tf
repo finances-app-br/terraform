@@ -53,7 +53,7 @@ locals {
     if var.enable_custom_domain && s.domain_name != ""
   }
 
-  jwt_enabled = var.jwt_authorizer == null ? 0 : 1
+  jwt_enabled = var.jwt_authorizer == null && !var.enable_cognito ? 0 : 1
 
   # The zip each function is deployed from: a real esbuild bundle for the BFF,
   # the generated stub for everything else.

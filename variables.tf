@@ -197,12 +197,23 @@ variable "throttling_burst_limit" {
   }
 }
 
+variable "enable_cognito" {
+  description = <<-EOT
+    Create the Cognito user pool (Essentials tier) and app client in cognito.tf
+    and protect the BFF's /graphql route with it. False together with a null
+    jwt_authorizer leaves the route open, trusting the dev-only x-user-id
+    header — never do that in production.
+  EOT
+  type        = bool
+  default     = true
+}
+
 variable "jwt_authorizer" {
   description = <<-EOT
-    Optional API Gateway JWT authorizer (Cognito, Auth0, ...) for the BFF. When
-    set, the /graphql route requires a valid bearer token and the BFF reads the
-    user id from the `sub` claim. Leave null for local/dev (identity via
-    x-user-id).
+    Optional external OIDC issuer (Auth0, another Cognito pool, ...) for the
+    BFF's JWT authorizer. Overrides the pool from enable_cognito when set. The
+    /graphql route then requires a valid bearer token and the BFF reads the
+    user id from the `sub` claim.
   EOT
   type = object({
     issuer    = string       # e.g. https://cognito-idp.us-east-1.amazonaws.com/<pool-id>

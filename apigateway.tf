@@ -28,8 +28,9 @@ resource "aws_apigatewayv2_integration" "lambda" {
   payload_format_version = "2.0"
 }
 
-# Optional JWT authorizer (Cognito / Auth0 / any OIDC issuer). Only the BFF
-# carries user data, so only its API gets one.
+# JWT authorizer: the Cognito pool in cognito.tf by default, or any OIDC issuer
+# given in var.jwt_authorizer. Only the BFF carries user data, so only its API
+# gets one.
 resource "aws_apigatewayv2_authorizer" "jwt" {
   for_each = { for k, s in local.services : k => s if s.jwt_protected && local.jwt_enabled == 1 }
 
@@ -39,8 +40,8 @@ resource "aws_apigatewayv2_authorizer" "jwt" {
   identity_sources = ["$request.header.Authorization"]
 
   jwt_configuration {
-    issuer   = var.jwt_authorizer.issuer
-    audience = var.jwt_authorizer.audiences
+    issuer   = local.jwt_config.issuer
+    audience = local.jwt_config.audiences
   }
 }
 

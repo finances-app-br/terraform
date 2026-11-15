@@ -50,3 +50,21 @@ output "aurora_cluster_endpoint" {
   description = "Writer endpoint (only reachable from inside the cluster VPC)."
   value       = aws_rds_cluster.aurora.endpoint
 }
+output "cognito_user_pool_id" {
+  description = "Cognito user pool the app signs users in against."
+  value       = one(aws_cognito_user_pool.main[*].id)
+}
+
+output "cognito_app_client_id" {
+  description = "Public app client id — the app's COGNITO_CLIENT_ID dart-define."
+  value       = one(aws_cognito_user_pool_client.app[*].id)
+}
+
+output "app_dart_defines" {
+  description = "Values for the Flutter app's --dart-define-from-file (none of them secret)."
+  value = {
+    BFF_URL           = "${contains(keys(local.domain_services), "bff") ? "https://${local.domain_services["bff"].domain_name}" : aws_apigatewayv2_api.service["bff"].api_endpoint}/graphql"
+    COGNITO_REGION    = var.aws_region
+    COGNITO_CLIENT_ID = one(aws_cognito_user_pool_client.app[*].id)
+  }
+}

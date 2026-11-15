@@ -148,13 +148,26 @@ Cloudflare zone settings **cannot be destroyed by Terraform**: removing the
 resources leaves the settings in place, so revert them in the dashboard if you
 ever back this out.
 
-### Enabling the JWT authorizer (recommended for production)
+### Authentication (Cognito)
 
-Uncomment `jwt_authorizer` in `terraform.tfvars` with your OIDC issuer and
-audience (e.g. an Amazon Cognito user pool). The BFF's `/graphql` route then
-requires an `Authorization: Bearer <token>` header and the BFF uses the token's
-`sub` claim as the user id. Without it, the BFF trusts the `x-user-id` header —
-**dev only**. The authorizer attaches to the `bff` service alone.
+`cognito.tf` creates an Amazon Cognito user pool (**Essentials** tier — the
+first 10,000 MAUs a month are free) and a public app client, and the BFF's
+`/graphql` route is protected by a JWT authorizer pointing at it. The app signs
+in with `USER_PASSWORD_AUTH` straight against Cognito and sends the access
+token as `Authorization: Bearer <token>`; the BFF uses the token's `sub` claim
+as the user id. The authorizer attaches to the `bff` service alone.
+
+- `terraform output app_dart_defines` prints `BFF_URL`, `COGNITO_REGION` and
+  `COGNITO_CLIENT_ID` for the app's `--dart-define-from-file`.
+- The pool has `deletion_protection = "ACTIVE"`: Aurora rows are keyed by
+  `sub`, so losing the pool orphans every user's data.
+- Verification and password-reset e-mails go through Cognito's default sender,
+  which has a low daily cap; switch `email_configuration` to SES before that
+  matters.
+- To use another OIDC issuer instead, set `jwt_authorizer = { issuer,
+  audiences }`; it overrides the pool. `enable_cognito = false` with no
+  `jwt_authorizer` leaves the route open to the dev-only `x-user-id` header —
+  **never in production**.
 
 ## Deploying without a domain
 
@@ -245,7 +258,8 @@ Give each token the narrowest scope that works: for this stack that is
 | `manage_caa_records`              | `false`           | **Zone-wide** CAA `issue`/`issuewild`.       |
 | `caa_issuers`                     | ACM + Cloudflare  | Trimming it can break cert renewal.          |
 | `caa_report_email`                | `""`              | Publishes an `iodef` record when set.        |
-| `jwt_authorizer`                  | `null`            | `{ issuer, audiences }` to enable auth.      |
+| `enable_cognito`                  | `true`            | Cognito pool + JWT authorizer on the BFF.    |
+| `jwt_authorizer`                  | `null`            | External `{ issuer, audiences }` override.   |
 
 ## Running the migration by hand
 

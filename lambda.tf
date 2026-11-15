@@ -85,6 +85,8 @@ resource "aws_lambda_function" "service" {
           AURORA_CLUSTER_ARN   = aws_rds_cluster.aurora.arn
           AURORA_SECRET_ARN    = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
           AURORA_DATABASE_NAME = aws_rds_cluster.aurora.database_name
+          # Apollo hides stack traces and disables introspection in production.
+          NODE_ENV = "production"
         },
         # OFX category suggestion (Jev via Defapi). Without a key the BFF's
         # classifyTransactions query reports CLASSIFIER_UNAVAILABLE and the app
