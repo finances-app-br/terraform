@@ -63,8 +63,6 @@ output "cognito_app_client_id" {
 output "app_dart_defines" {
   description = "Values for the Flutter app's --dart-define-from-file (none of them secret)."
   value = {
-    BFF_URL           = "${contains(keys(local.domain_services), "bff") ? "https://${local.domain_services["bff"].domain_name}" : aws_apigatewayv2_api.service["bff"].api_endpoint}/graphql"
-    COGNITO_REGION    = var.aws_region
-    COGNITO_CLIENT_ID = one(aws_cognito_user_pool_client.app[*].id)
+    BFF_URL = "${contains(keys(local.domain_services), "bff") ? "https://${local.domain_services["bff"].domain_name}" : aws_apigatewayv2_api.service["bff"].api_endpoint}/graphql"
   }
 }

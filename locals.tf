@@ -39,7 +39,11 @@ locals {
       cors_origins  = var.bff_cors_allow_origins
       route_key     = "POST /graphql"
       aurora_access = true
-      jwt_protected = true
+      # The BFF issues and verifies its own JWTs (users table + JWT_SECRET):
+      # `login` and `signUp` must reach it without a token, so API Gateway
+      # puts no authorizer in front and every resolver that touches user data
+      # checks the bearer token itself.
+      jwt_protected = false
     }
   }
 

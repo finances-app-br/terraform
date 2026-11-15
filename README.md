@@ -81,7 +81,8 @@ See [site/README.md](site/README.md) for the rest.
   role, optional X-Ray active tracing, optional reserved concurrency, and a
   CloudWatch log group with retention.
 - **API Gateway** HTTP API per service, with per-stage **throttling**, optional
-  CORS, a `$default` stage, and an optional JWT authorizer on the BFF.
+  CORS and a `$default` stage. The BFF authenticates requests itself (see
+  [Authentication](#authentication-bff-issued-jwts)).
 - **ACM** certificates (DNS-validated via Cloudflare) + API Gateway custom
   domains.
 - **Cloudflare** DNS: the ACM validation records and a proxied `CNAME` per
@@ -148,26 +149,34 @@ Cloudflare zone settings **cannot be destroyed by Terraform**: removing the
 resources leaves the settings in place, so revert them in the dashboard if you
 ever back this out.
 
-### Authentication (Cognito)
+### Authentication (BFF-issued JWTs)
 
-`cognito.tf` creates an Amazon Cognito user pool (**Essentials** tier — the
-first 10,000 MAUs a month are free) and a public app client, and the BFF's
-`/graphql` route is protected by a JWT authorizer pointing at it. The app signs
-in with `USER_PASSWORD_AUTH` straight against Cognito and sends the access
-token as `Authorization: Bearer <token>`; the BFF uses the token's `sub` claim
-as the user id. The authorizer attaches to the `bff` service alone.
+The BFF authenticates users itself: a `users` table in Aurora (Argon2id
+password hashes), a `login` mutation that issues an HS256 JWT signed with
+`JWT_SECRET`, and a `ctx` claim saying whether the session was opened in the
+`app` (30-day token) or on the `site` (2-hour token). Because `login` and the
+site's public `signUp` must be reachable without a token, the `bff` route has
+**no API Gateway authorizer** (`jwt_protected = false` in `locals.tf`); the
+Lambda verifies the bearer token on every request and refuses user data to
+anonymous callers. The dev-only `x-user-id` header is no longer read in Lambda.
 
-- `terraform output app_dart_defines` prints `BFF_URL`, `COGNITO_REGION` and
-  `COGNITO_CLIENT_ID` for the app's `--dart-define-from-file`.
-- The pool has `deletion_protection = "ACTIVE"`: Aurora rows are keyed by
-  `sub`, so losing the pool orphans every user's data.
-- Verification and password-reset e-mails go through Cognito's default sender,
-  which has a low daily cap; switch `email_configuration` to SES before that
-  matters.
-- To use another OIDC issuer instead, set `jwt_authorizer = { issuer,
-  audiences }`; it overrides the pool. `enable_cognito = false` with no
-  `jwt_authorizer` leaves the route open to the dev-only `x-user-id` header —
-  **never in production**.
+- `bff_jwt_secret` (**required**, ≥ 32 chars) becomes the Lambda's
+  `JWT_SECRET`. Rotating it signs everyone out.
+- `bff_admin_api_key` (optional, ≥ 32 chars) becomes `ADMIN_API_KEY`, which
+  the administrative `createUser` / `updateUser` mutations require in the
+  `x-admin-key` header. Null disables them.
+- Both come from the keychain through `.envrc` (`TF_VAR_bff_jwt_secret`,
+  `TF_VAR_bff_admin_api_key`) and, like `jev_api_key`, end up in the state
+  and the Lambda environment.
+- `terraform output app_dart_defines` prints `BFF_URL` for the app's
+  `--dart-define-from-file`.
+
+**Cognito is no longer wired to anything.** `cognito.tf` still creates the user
+pool while `enable_cognito = true`, but no route uses it. The pool has
+`deletion_protection = "ACTIVE"`, so removing it takes two applies: set
+`deletion_protection = "INACTIVE"` and apply, then `enable_cognito = false`
+and apply. Data stored under the old Cognito `sub` values stays keyed by them;
+it does not follow a user to their new BFF user id.
 
 ## Deploying without a domain
 
@@ -258,8 +267,10 @@ Give each token the narrowest scope that works: for this stack that is
 | `manage_caa_records`              | `false`           | **Zone-wide** CAA `issue`/`issuewild`.       |
 | `caa_issuers`                     | ACM + Cloudflare  | Trimming it can break cert renewal.          |
 | `caa_report_email`                | `""`              | Publishes an `iodef` record when set.        |
-| `enable_cognito`                  | `true`            | Cognito pool + JWT authorizer on the BFF.    |
-| `jwt_authorizer`                  | `null`            | External `{ issuer, audiences }` override.   |
+| `bff_jwt_secret`                  | —                 | **Required.** BFF token signing key.         |
+| `bff_admin_api_key`               | `null`            | Enables `createUser` / `updateUser`.         |
+| `enable_cognito`                  | `true`            | Legacy Cognito pool, no longer used.         |
+| `jwt_authorizer`                  | `null`            | Unused while the BFF route has no authorizer.|
 
 ## Running the migration by hand
 

@@ -199,10 +199,10 @@ variable "throttling_burst_limit" {
 
 variable "enable_cognito" {
   description = <<-EOT
-    Create the Cognito user pool (Essentials tier) and app client in cognito.tf
-    and protect the BFF's /graphql route with it. False together with a null
-    jwt_authorizer leaves the route open, trusting the dev-only x-user-id
-    header — never do that in production.
+    Legacy: create the Cognito user pool (Essentials tier) and app client in
+    cognito.tf. Nothing uses them any more — the BFF authenticates users
+    itself (bff_jwt_secret) and its route has no API Gateway authorizer. The
+    pool has deletion protection; see the README before turning this off.
   EOT
   type        = bool
   default     = true
@@ -210,10 +210,10 @@ variable "enable_cognito" {
 
 variable "jwt_authorizer" {
   description = <<-EOT
-    Optional external OIDC issuer (Auth0, another Cognito pool, ...) for the
-    BFF's JWT authorizer. Overrides the pool from enable_cognito when set. The
-    /graphql route then requires a valid bearer token and the BFF reads the
-    user id from the `sub` claim.
+    Optional external OIDC issuer (Auth0, another Cognito pool, ...) for an
+    API Gateway JWT authorizer on services with jwt_protected = true. The BFF
+    no longer has that flag: it issues and verifies its own tokens, which an
+    OIDC authorizer would reject.
   EOT
   type = object({
     issuer    = string       # e.g. https://cognito-idp.us-east-1.amazonaws.com/<pool-id>
@@ -410,4 +410,29 @@ variable "jev_api_key" {
   type        = string
   default     = null
   sensitive   = true
+}
+
+# ------------------------------------------------------- BFF authentication ---
+
+variable "bff_jwt_secret" {
+  description = "HS256 secret the BFF signs and verifies its access tokens with (JWT_SECRET). At least 32 characters; generate with `openssl rand -base64 48`. Rotating it signs every user out. Prefer TF_VAR_bff_jwt_secret from the keychain (terraform/.envrc); the value lands in the state and in the Lambda's environment."
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(var.bff_jwt_secret) >= 32
+    error_message = "bff_jwt_secret must be at least 32 characters long."
+  }
+}
+
+variable "bff_admin_api_key" {
+  description = "Key for the BFF's administrative createUser / updateUser mutations, sent in the x-admin-key header (ADMIN_API_KEY). Null or empty disables them. At least 32 characters; prefer TF_VAR_bff_admin_api_key from the keychain."
+  type        = string
+  default     = null
+  sensitive   = true
+
+  validation {
+    condition     = var.bff_admin_api_key == null || var.bff_admin_api_key == "" || length(coalesce(var.bff_admin_api_key, "x")) >= 32
+    error_message = "bff_admin_api_key must be at least 32 characters long (or null to disable the admin mutations)."
+  }
 }

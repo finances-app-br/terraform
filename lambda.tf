@@ -87,7 +87,12 @@ resource "aws_lambda_function" "service" {
           AURORA_DATABASE_NAME = aws_rds_cluster.aurora.database_name
           # Apollo hides stack traces and disables introspection in production.
           NODE_ENV = "production"
+          # HS256 key the BFF signs and verifies its access tokens with.
+          JWT_SECRET = var.bff_jwt_secret
         },
+        # Guards the administrative createUser / updateUser mutations
+        # (x-admin-key header). Unset disables them.
+        var.bff_admin_api_key == null || var.bff_admin_api_key == "" ? {} : { ADMIN_API_KEY = var.bff_admin_api_key },
         # OFX category suggestion (Jev via Defapi). Without a key the BFF's
         # classifyTransactions query reports CLASSIFIER_UNAVAILABLE and the app
         # keeps its Entrada/Saída fallback.

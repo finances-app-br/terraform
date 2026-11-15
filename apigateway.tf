@@ -13,7 +13,7 @@ resource "aws_apigatewayv2_api" "service" {
     content {
       allow_origins = each.value.cors_origins
       allow_methods = ["GET", "POST", "OPTIONS"]
-      allow_headers = ["content-type", "authorization", "x-user-id"]
+      allow_headers = ["content-type", "authorization"]
       max_age       = 3600
     }
   }
@@ -42,6 +42,14 @@ resource "aws_apigatewayv2_authorizer" "jwt" {
   jwt_configuration {
     issuer   = local.jwt_config.issuer
     audience = local.jwt_config.audiences
+  }
+
+  # Inverts the destroy ordering: when an authorizer goes away, the route that
+  # references it is updated to NONE first and the authorizer deleted after.
+  # Without this Terraform deletes the authorizer first and API Gateway
+  # answers 409 ("is referenced in route").
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
