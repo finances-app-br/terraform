@@ -218,7 +218,7 @@ Give each token the narrowest scope that works: for this stack that is
 | `project_name`                    | `finance-app-bff` | Resource name prefix.                        |
 | `aws_region`                      | `us-east-1`       |                                              |
 | `bff_source_dir`                  | `../app-bff`      | BFF checkout built into the Lambda bundle.   |
-| `aurora_engine_version`           | `16.6`            | Scale-to-zero needs 16.3+/15.7+/14.12+.      |
+| `aurora_engine_version`           | `16.15`           | Scale-to-zero needs 16.3+/15.7+/14.12+.      |
 | `aurora_min_capacity`             | `0`               | `0` pauses the cluster when idle.            |
 | `aurora_max_capacity`             | `2`               | Upper ACU bound.                             |
 | `aurora_seconds_until_auto_pause` | `300`             | Idle time before scaling to zero.            |

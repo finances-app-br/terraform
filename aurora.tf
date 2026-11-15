@@ -43,7 +43,7 @@ resource "aws_db_subnet_group" "aurora" {
 # Attach an ingress rule here if you later need psql access from a bastion.
 resource "aws_security_group" "aurora" {
   name        = "${var.project_name}-aurora"
-  description = "Aurora Serverless v2 cluster — Data API only, no network ingress."
+  description = "Aurora Serverless v2 cluster - Data API only, no network ingress."
   vpc_id      = aws_vpc.aurora.id
 
   tags = { Name = "${var.project_name}-aurora" }

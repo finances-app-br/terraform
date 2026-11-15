@@ -21,7 +21,7 @@ variable "bff_source_dir" {
 variable "aurora_engine_version" {
   description = "Aurora PostgreSQL engine version. Scale-to-zero needs 16.3+/15.7+/14.12+."
   type        = string
-  default     = "16.6"
+  default     = "16.15"
 }
 
 variable "aurora_database_name" {
