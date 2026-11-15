@@ -80,11 +80,17 @@ resource "aws_lambda_function" "service" {
   dynamic "environment" {
     for_each = each.value.aurora_access ? [1] : []
     content {
-      variables = {
-        AURORA_CLUSTER_ARN   = aws_rds_cluster.aurora.arn
-        AURORA_SECRET_ARN    = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
-        AURORA_DATABASE_NAME = aws_rds_cluster.aurora.database_name
-      }
+      variables = merge(
+        {
+          AURORA_CLUSTER_ARN   = aws_rds_cluster.aurora.arn
+          AURORA_SECRET_ARN    = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
+          AURORA_DATABASE_NAME = aws_rds_cluster.aurora.database_name
+        },
+        # OFX category suggestion (Jev via Defapi). Without a key the BFF's
+        # classifyTransactions query reports CLASSIFIER_UNAVAILABLE and the app
+        # keeps its Entrada/Saída fallback.
+        var.jev_api_key == null ? {} : { JEV_API_KEY = var.jev_api_key },
+      )
     }
   }
 

@@ -363,3 +363,10 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "jev_api_key" {
+  description = "Defapi API key for the BFF's OFX category suggestion (Jev). Null disables the feature. Prefer TF_VAR_jev_api_key from the keychain over a tfvars file; the value lands in the state and in the Lambda's environment."
+  type        = string
+  default     = null
+  sensitive   = true
+}
