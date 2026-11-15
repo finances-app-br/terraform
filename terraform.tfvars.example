@@ -81,6 +81,13 @@ manage_caa_records              = true
 #   audiences = ["your-app-client-id"]
 # }
 
+# ---- Monthly cost alert (AWS Budget, account-wide) ----
+# Emails at 80% and 100% of actual spend, and when the forecast passes 100%.
+# budget_alert_emails is required; AWS sends no confirmation, alerts just start.
+monthly_budget_usd  = 10
+budget_alert_emails = ["you@example.com"]
+# enable_cost_budget = false   # opt out
+
 tags = {
   Environment = "production"
 }

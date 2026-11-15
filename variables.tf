@@ -356,6 +356,36 @@ variable "caa_report_email" {
   default     = ""
 }
 
+# ------------------------------------------------------------------- budget ---
+
+variable "enable_cost_budget" {
+  description = "Create the monthly AWS Budget (account-wide) that emails when spend nears or passes the limit."
+  type        = bool
+  default     = true
+}
+
+variable "monthly_budget_usd" {
+  description = "Monthly cost limit, in USD, for the AWS Budget."
+  type        = number
+  default     = 10
+
+  validation {
+    condition     = var.monthly_budget_usd > 0
+    error_message = "monthly_budget_usd must be greater than zero."
+  }
+}
+
+variable "budget_alert_emails" {
+  description = "Addresses that receive the budget alerts. Required while enable_cost_budget is true; set it in terraform.tfvars (gitignored)."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = length(var.budget_alert_emails) > 0 || !var.enable_cost_budget
+    error_message = "budget_alert_emails needs at least one address while enable_cost_budget is true (AWS requires a subscriber on every notification)."
+  }
+}
+
 # --------------------------------------------------------------------- tags ---
 
 variable "tags" {
